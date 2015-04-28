@@ -9,7 +9,7 @@
     $date = array();
     //получим текущее количество секунд
     $timestamp_now = time();
-    for ($i = 0; $i < 4; $i++)
+    for ($i = 0; $i < 5; $i++)
     {
         array_push($date, mt_rand(1, $timestamp_now));
     }
@@ -21,8 +21,8 @@
      * наибольшим
      *
      */
-    $date_normal = array();
-    $min_day = 32;
+
+/*    $min_day = 32;
     $max_month = 0;
 
     foreach ($date as $value) {
@@ -41,6 +41,18 @@
 
         array_push($date_normal, date('d-m-Y',$value));
     }
+*/
+    //вместо цикла
+    //для контроля
+    $date_normal = array();
+    array_push($date_normal, date('d-m-Y',$date[0]),date('d-m-Y',$date[1]),date('d-m-Y',$date[2])
+            ,date('d-m-Y',$date[3]),date('d-m-Y',$date[4]));
+
+    $date_array = array(date('j',$date[0]),date('j',$date[1]),date('j',$date[2]),date('j',$date[3]),date('j',$date[4]));
+    $month_array = array(date('n',$date[0]),date('n',$date[1]),date('n',$date[2]),date('n',$date[3]),date('n',$date[4]));
+
+    $min_day = min($date_array);
+    $max_month = max($month_array);
 
     echo "Даты в привычном представлении:";
     var_dump($date_normal);
@@ -48,7 +60,8 @@
     echo "<br>Наибольший месяц:".$max_month;
 
     //* - Отсортируйте массив по возрастанию дат
-    array_multisort($date,SORT_ASC);
+    //array_multisort($date,SORT_ASC);
+    sort($date);
     echo "<br>Отсортировано по возрастанию:";
     var_dump($date);
 
