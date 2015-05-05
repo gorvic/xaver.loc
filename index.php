@@ -33,8 +33,9 @@ function array2table($table_array, $null = '&nbsp;')
     //выведем первую колонку
     $html_table .= '<th>' . $first_column_name. '</th>';
 
-    // Take the keys from the first row as the headings
 
+
+    // Take the keys from the first row as the headings
     $first_item_keys = array_keys($table_array);
     $first_item = $table_array[$first_item_keys[0]];
 
@@ -60,6 +61,12 @@ function array2table($table_array, $null = '&nbsp;')
             $pos = strpos($cell,'diskont');
             if($pos !== FALSE){
                 $cell = str_replace('diskont','', $cell);
+                $cell *= 10;
+                if ($cell === 0) {
+                    $cell = '';
+                }else{
+                    $cell = (string) $cell." %"; // в строку
+                }
             }
 
             // Cast objects
@@ -71,6 +78,8 @@ function array2table($table_array, $null = '&nbsp;')
 
             $html_table .= '</td>';
         }
+
+
 
         $html_table .= "</tr>\n";
     }
@@ -132,17 +141,16 @@ $tableStyle = ' border="1px" cellpadding="2"';
  *
  */
 
-$table = array2table($bd);
-echo $table;
-
 $total_items_ordered = 0;
 $total_qty = 0;
+$total_qty_remains = 0;
 $total_sum = 0;
+$total_sum_discount = 0;
+$total_sum_remains = 0;
 
-//пройдёмся по массиву ещё раз и посчитаем  все итоговые значения
+//пройдёмся по массиву и посчитаем  все итоговые значения
 $array_notifications = array();
 $array_discounts = array();
-
 
 foreach ($bd as $name => $row) {
 
@@ -151,14 +159,18 @@ foreach ($bd as $name => $row) {
         $cur_qty = (int) $row['количество заказано'];
         $cur_price = (int) $row['цена'];
         $cur_remain = (int) $row['осталось на складе'];
+        $cur_total = $cur_qty * $cur_price;
+        $cur_min_qty = (int) min($cur_qty, $cur_remain);
 
         //условия
         if ($cur_qty < $cur_remain){
             $array_notifications[] = "Товар  <i>\"".$name."\"</i> в наличии на складе только в количестве <b>".$cur_remain."</b>, при заказе <b>".$cur_qty."</b> штук.<br>";
         }
 
-        if ($name == 'игрушка детская велосипед' && $cur_qty >=3 ){ //случай спец. предложения
+        if ($name == 'игрушка детская велосипед' && $cur_qty >=3 ){ //случай спец. предложения, если 3 с учётом остатка - нужно добавить условие $cur_qty >= $cur_remain
             $array_discounts[] = "Для товара <i>\"".$name."\"</i> Вы получаете <b><i>специальную</i></b> скидку в <b>30%</b>!";
+            $cur_discount = 30;
+            $bd[$name]['diskont'] = 'diskont3'; //перезапишем для спец. предложения
         }elseif ($cur_discount != 0) {  //другие случаи скидки
             $array_discounts[] = "Для товара <i>\"".$name."\"</i> Вам предоставлена скидка в <b>".$cur_discount."%</b>!<br>";
         }
@@ -166,10 +178,19 @@ foreach ($bd as $name => $row) {
             $array_discounts[] = "Для товара <i>\"".$name."\"</i> скидка отсутствует.<br>";
         }
 
+        //проставим стоимость и стоимость с учётом скидки, также откорректируем скидку по спец. предложению, если будет
+        $bd[$name]['Всего'] = $cur_min_qty * $cur_price;
+        $bd[$name]['Всего с учетом скидки'] = $cur_min_qty * $cur_price * (100 - $cur_discount)/100;
+
 
         //итоговый подсчёт после всех изменений
         $total_qty += $cur_qty;
-        $total_sum +=  $cur_qty * $cur_price * (100 - $cur_discount)/100 ;
+        $total_qty_remains += $cur_min_qty;
+
+        $total_sum_remains +=   $cur_min_qty * $cur_price;
+        $total_sum +=  $cur_total;
+        $total_sum_discount +=  $cur_min_qty *$cur_price* (100 - $cur_discount)/100 ;
+
 }
 /*
  * 2) В секции ИТОГО должно быть указано: сколько всего наименовний было заказано, каково общее количество товара, какова общая сумма заказа
@@ -190,6 +211,8 @@ foreach ($bd as $name => $row) {
  * статические и глобальные переменные в теле функции
  *
  */
+$table = array2table($bd);
+echo $table;
 
 section_output($array_discounts, 'Скидки');
 section_output($array_notifications, 'Уведомления');
@@ -197,6 +220,6 @@ section_output($array_notifications, 'Уведомления');
 $number_of_section = get_number_of_section();
 echo "<h3>".$number_of_section.". Итого:</h3>";
 echo 'Заказано наименований: <b>' . count($bd) . '</b><br>'; //т.к. значения всегда 1 - 10
-echo 'Общее количество товара: <b>' . $total_qty . '</b><br>';
-echo 'Общая сумма заказа : <b>' . $total_sum . '</b>';
+echo 'Заказано товара: <b>' . $total_qty . '</b>, с учетом остатка на складе <b>'.$total_qty_remains.'</b><br>';
+echo 'Заказано на сумму : <b>' . $total_sum . '</b>, с учетом остатка на складе <b>'.$total_sum_remains.  '</b>, с учетом скидок <b>'.$total_sum_discount.'</b>';
 ?>
