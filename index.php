@@ -13,6 +13,16 @@ session_start();
 //    unset($_SESSION['ads']);
 //    exit;
 
+function button_name() {
+    if ($_SESSION['action_mode'] == "edit") {
+
+        return "Сохранить";
+    } else {
+
+        return "Отправить";
+    }
+}
+
 function array2table($columns_array, $null = '&nbsp;') {
     global $tableStyle;
 
@@ -53,8 +63,7 @@ function array2table($columns_array, $null = '&nbsp;') {
 
                 if ($key_of_ad == 'title') {
 
-                    $html_table .= "<a href=" . $_SERVER['PHP_SELF'] . "?id=" . $id . "&mode=1>" . $cell . "</a>";
-
+                    $html_table .= "<a href=" . $_SERVER['PHP_SELF'] . "?id=" . $id . "&mode=show>" . $cell . "</a>";
                 } else {
 
                     $html_table .= $cell;
@@ -63,7 +72,7 @@ function array2table($columns_array, $null = '&nbsp;') {
             }
 
             $html_table .= '<td>'; //откроем ячейку
-            $html_table .= "<a href=" . $_SERVER['PHP_SELF'] . "?id=" . $id . "&mode=2> Удалить </a>";
+            $html_table .= "<a href=" . $_SERVER['PHP_SELF'] . "?id=" . $id . "&mode=delete> Удалить </a>";
             $html_table .= '</td>';
             $html_table .= "</tr>\n"; //закрываем строку
         }
@@ -79,40 +88,49 @@ $tableStyle = ' border="1px" cellpadding="2"';
 if (!isset($_SESSION['ads'])) {
     $_SESSION['ads'] = [];
     $_SESSION['max_id'] = 0; //счётчик всегда увеличивается, id всегда уникален
- }
+    $_SESSION['action_mode'] = ""; //либо edit либо пусто
+    $_SESSION['edit_id'] = ""; //id редактируемого объявления
+}
 
- //значения по умолчанию
- $form_array = [];
- $form_array['seller_name'] = "";
- $form_array['phone'] = "";
- $form_array['phone'] = "";
- $form_array['location_id'] = "";
- $form_array['category_id'] = "";
- $form_array['title'] = "";
- $form_array['description'] ="";
- $form_array['price'] = "0";
- $form_array['email'] = "";
- $form_array['private'] = 1;
+//значения по умолчанию
+$form_array = [];
+$form_array['seller_name'] = "";
+$form_array['phone'] = "";
+$form_array['allow_mails'] = "";
+$form_array['location_id'] = "";
+$form_array['category_id'] = "";
+$form_array['title'] = "";
+$form_array['description'] = "";
+$form_array['price'] = "0";
+$form_array['email'] = "";
+$form_array['private'] = 1;
 
+//var_dump($_POST);
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-   // var_dump($_POST);
 
     if (isset($_POST['submit'])) {  //пришло от кнопки
-
-        //var_dump($_POST);
-        $cur_index = ++$_SESSION['max_id'];  //увеличили id
-
-        //добавляем новый элемент
+        if ($_SESSION['action_mode'] == "") { //заносим объявление
+            $cur_index = ++$_SESSION['max_id'];  //увеличили id
+        } else {
+            $cur_index = $_SESSION['edit_id'];  //редактируемое объявление
+            //сбрасываем режим
+            $_SESSION['action_mode'] = "";
+            $_SESSION['edit_id'] = "";
+        }
+        //либо добавляется по ключу, либо редактируется текущее
         $_SESSION['ads'][$cur_index] = $_POST;
-        $count = count($_SESSION);
+
+        //проверим чекбокс. Если нет галки - в ПОСТ не приходит
+        if (!isset($_SESSION['ads'][$cur_index]['allow_mails'])) {
+            $_SESSION['ads'][$cur_index]['allow_mails'] = "";
+        }
 
         //обработка значений ПОСТ, может быть значительно сложнее
-        foreach ($_SESSION['ads'][$cur_index] as $key => $value)
-        {
+        foreach ($_SESSION['ads'][$cur_index] as $key => $value) {
             $_SESSION['ads'][$cur_index][$key] = strip_tags($value);
-         }
+        }
 
         //перезапрос GET
         header("Location: " . $_SERVER["PHP_SELF"]);
@@ -120,30 +138,45 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 } elseif ($_SERVER["REQUEST_METHOD"] == "GET") { //пришло из ссылок
 
-    if (isset($_GET['id']) && isset($_GET['mode'])) {
+    switch ($_SESSION['action_mode']) {
+        case "edit":
 
-        //проверяем параметры
-        $id = (int) $_GET['id'];
-        $mode = (int) $_GET['mode'];
+            echo "Сначала сохраните изменения в объявлении!";
 
-        if ($mode == 1) { //проставить
-            foreach ($_SESSION['ads'][$id] as $key => $value) {
+            foreach ($_SESSION['ads'][$_SESSION['edit_id']] as $key => $value) {
                 $form_array[$key] = $value;
             }
-        } elseif ($mode == 2) { //удалить
-            //проверим, существует ли ключ в соответствии
-            if (array_key_exists($id, $_SESSION['ads'])) {
+            break;
 
-               // echo "Хотим удалить объявление: " . $id . "<br />";
-                unset($_SESSION['ads'][$id]);
-            } else {
+        default :
 
-              echo "Передан неверный ID объявления";
+            if (isset($_GET['id']) && isset($_GET['mode'])) {
 
+                //проверяем параметры
+                $id = (int) $_GET['id'];
+                $mode = strip_tags($_GET['mode']);
+
+                if ($mode == "show") { //проставить
+                    foreach ($_SESSION['ads'][$id] as $key => $value) {
+                        $form_array[$key] = $value;
+                    }
+
+                    //выставляем режим редактирования
+                    $_SESSION['action_mode'] = "edit";
+                    $_SESSION['edit_id'] = $id;
+                    
+                } elseif ($mode == "delete") { //удалить
+                    //проверим, существует ли ключ в соответствии
+                    if (array_key_exists($id, $_SESSION['ads'])) {
+
+                        // echo "Хотим удалить объявление: " . $id . "<br />";
+                        unset($_SESSION['ads'][$id]);
+                    } else {
+
+                        echo "Передан неверный ID объявления";
+                    }
+                }
             }
-        }
-    } else {
-
     }
 }
 ?>
@@ -167,7 +200,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div> <label>Электронная почта</label>
         <input type="text" value="<?php echo  $form_array['email']?>" name="email" id="fld_email">
     </div>
-    <div> <label> <input type="checkbox" value="1" name="allow_mails" id="allow_mails"><span>Я не хочу получать вопросы по объявлению по e-mail</span> </label> </div>
+    <div> <label> <input type="checkbox" value="1" <?php if ($form_array['allow_mails'] == 1) {echo "checked=\"checked\"";}?> name="allow_mails" id="allow_mails"><span>Я не хочу получать вопросы по объявлению по e-mail</span> </label> </div>
     <div> <label>Номер телефона</label> <input type="text" value="<?php echo $form_array['phone']?>" name="phone" id="fld_phone">
     </div>
     <div> <label for="region" class="form-label">Город</label> <select title="Выберите Ваш город" name="location_id" id="region" class="form-input-select"> <option value="">-- Выберите город --</option>
@@ -183,7 +216,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div> <label>Цена</label> <input type="text" maxlength="9" value="<?php echo $form_array['price']?>" name="price">&nbsp;<span>руб.</span> </div>
 
     <div>
-        <div> <span class="vas-submit-border"></span> <span></span> <input type="submit" value="Отправить" id="form_submit" name="submit"> </div>
+        <div> <span class="vas-submit-border"></span> <span></span> <input type="submit" value="<?php echo button_name();  ?>" id="form_submit" name="submit"> </div>
     </div>
 </form>
 
