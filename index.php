@@ -87,7 +87,7 @@ $tableStyle = ' border="1px" cellpadding="2"';
 //инициализируем массив в любом случае
 if (!isset($_SESSION['ads'])) {
     $_SESSION['ads'] = [];
-    $_SESSION['max_id'] = 0; //счётчик всегда увеличивается, id всегда уникален
+    //$_SESSION['max_id'] = 0; //счётчик всегда увеличивается, id всегда уникален
     $_SESSION['action_mode'] = ""; //либо edit либо пусто
     $_SESSION['edit_id'] = ""; //id редактируемого объявления
 }
@@ -111,8 +111,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 
     if (isset($_POST['submit'])) {  //пришло от кнопки
+
         if ($_SESSION['action_mode'] == "") { //заносим объявление
-            $cur_index = ++$_SESSION['max_id'];  //увеличили id
+            $cur_index = max(array_keys($_SESSION['ads']))+1; //$_SESSION['max_id'];  //увеличили id
         } else {
             $cur_index = $_SESSION['edit_id'];  //редактируемое объявление
             //сбрасываем режим
@@ -164,7 +165,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     //выставляем режим редактирования
                     $_SESSION['action_mode'] = "edit";
                     $_SESSION['edit_id'] = $id;
-                    
+
                 } elseif ($mode == "delete") { //удалить
                     //проверим, существует ли ключ в соответствии
                     if (array_key_exists($id, $_SESSION['ads'])) {
