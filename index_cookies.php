@@ -1,5 +1,4 @@
 <?php
-define('PATH_TO_ADS', 'ads/ads.txt');
 /*
   Название объявления | Цена | Имя | Удалить
   3)При нажатии на «название объявления» на экран выводится шаблон объявления как из пункта 1, только в места полей подставляются истинные значения
@@ -26,31 +25,12 @@ $form_array['price'] = "0";
 $form_array['email'] = "";
 $form_array['private'] = 1;
 
-//каждый раз инициализируем массив текущих объявлений
-//если файл не существует - создадим его
-if (!file_exists('ads/')) {
-    mkdir('ads');
-}
-
-if (file_exists(PATH_TO_ADS)) {
-    $ads_array = file_get_contents(PATH_TO_ADS);
-    if ($ads_array === false) { //инициализируем массив
-        $ads_array = [];
-    } elseif (strlen($ads_array) == 0) {
-        $ads_array = [];
-    }
-    else {
-        $ads_array = unserialize($ads_array);
-    }
-
+//десериализуем в массив или создадим
+if (isset($_COOKIE['ads'])) {
+    $_COOKIE['ads'] = unserialize($_COOKIE['ads']);
 } else {
-    $handle = fopen(PATH_TO_ADS, "w");
-    if ($handle) {
-        fclose($handle);
-    }
-    $ads_array = [];
+    $_COOKIE['ads'] = [];
 }
-
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
@@ -72,17 +52,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
 
         if ($from_submit) {
-            //добавляем новое объявление, если не было
-            $ads_array[] = $tmp_post;
+            //добавляем новое объявление, если не было -
+            $_COOKIE['ads'][] = $tmp_post;
+
         } elseif ($from_edit) {
 
             $id = (int)$_POST['edit_id'];
-            $ads_array[$id] = $tmp_post;
+            $_COOKIE['ads'][$id] = $tmp_post;
         }
 
-        if (file_exists(PATH_TO_ADS)) {
-            file_put_contents(PATH_TO_ADS, serialize($ads_array));
-        }
+        //помещаем в куки и потом отправляем на клиента
+        setcookie('ads', serialize( $_COOKIE['ads']), time()+3600*24*7);
+
         //перезапрос GET
         header("Location: " . $_SERVER["PHP_SELF"]);
         exit;
@@ -100,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($mode == "show") { //проставить
 
             //заполним массив для вывода html
-            foreach ($ads_array[$id] as $key => $value) {
+            foreach ($_COOKIE['ads'][$id] as $key => $value) {
                 $form_array[$key] = $value;
             }
 
@@ -111,14 +92,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } elseif ($mode == "delete") { //удалить
 
             //проверим, существует ли ключ в соответствии
-            if (array_key_exists($id,  $ads_array)) {
+            if (array_key_exists($id,   $_COOKIE['ads'])) {
 
-                unset($ads_array[$id]); //обнуляем объявление, в случае единств. объявления -в файле сериал. пустой массив
+                unset($_COOKIE['ads'][$id]); //обнуляем объявление
+                setcookie('ads', serialize($_COOKIE['ads']), time()+3600*24*7);
 
-                //поместим в файл
-                if (file_exists(PATH_TO_ADS)) {
-                    file_put_contents(PATH_TO_ADS, serialize($ads_array));
-                }
              } else {
 
                 echo "Передан неверный ID объявления";
@@ -173,7 +151,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     //Название объявления | Цена | Имя | Удалить
 
 echo '<table border="1px" cellpadding="1">';
-foreach ($ads_array as $ad_key => $ad) {
+foreach ($_COOKIE['ads'] as $ad_key => $ad) {
 
     $html_str = "";
     echo '<tr>';

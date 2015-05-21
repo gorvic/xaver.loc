@@ -1,19 +1,98 @@
 <?php
-define('PATH_TO_ADS', 'ads/ads.txt');
-/*
+/* 1)Всё что пришло из формы записать в $_SESSION как новое объявление.
+  2)Под формой создать вывод всех объявлений, содержащихся в сессии по шаблону:
   Название объявления | Цена | Имя | Удалить
   3)При нажатии на «название объявления» на экран выводится шаблон объявления как из пункта 1, только в места полей подставляются истинные значения
   4)При нажатии на «Удалить», объявление удаляется из сессии */
 
 header("Content-Type: text/html; charset=utf-8");
 
-//имя кнопки по умолчанию
-$default_button_text = 'Отправить';
-$default_button_name = 'submit';
-$default_edit_id = '';
+//создаём или получаем доступ до  сессии
+session_start();
 
-//значения по умолчанию, буферная переменная,  из этого массива заполняем хтмл
-//можно также всё реализовать через $_COOKIE['ads']
+//    unset($_SESSION['ads']);
+//    exit;
+
+function button_name() {
+    if ($_SESSION['action_mode'] == "edit") {
+
+        return "Сохранить";
+    } else {
+
+        return "Отправить";
+    }
+}
+
+function array2table($columns_array, $null = '&nbsp;') {
+    global $tableStyle;
+
+
+    $html_table = "<table " . $tableStyle . ">\n";
+
+    //header
+    $html_table .= "\t<tr>";
+    $html_table .= '<th> п/п </th>';
+
+    foreach ($columns_array as $rus_heading) {
+        $html_table .= '<th>' . $rus_heading . '</th>';
+    }
+
+    $html_table .= '<th> Действие </th>';
+    $html_table .= "</tr>\n";
+
+    //body
+    if (isset($_SESSION['ads'])) { //если есть хоть одно объявление
+        $ads = $_SESSION['ads'];
+
+        $counter = 0;
+        foreach ($ads as $id => $ad) {
+
+            $html_table .= "\t<tr>"; //открываем строку
+
+            $html_table .= '<td>'; //откроем ячейку
+            $html_table .= ++$counter;
+            $html_table .= '</td>';
+
+            foreach ($columns_array as $key_of_ad => $value_of_ad) { //выведем только нужные колонки
+                $html_table .= '<td>'; //откроем ячейку
+
+                $cell = $ad[$key_of_ad]; //seller_name, title, price, delete_ad
+                $cell = (strlen($cell) > 0) ?
+                        htmlspecialchars((string) $cell) : //выводим
+                        $null;
+
+                if ($key_of_ad == 'title') {
+
+                    $html_table .= "<a href=" . $_SERVER['PHP_SELF'] . "?id=" . $id . "&mode=show>" . $cell . "</a>";
+                } else {
+
+                    $html_table .= $cell;
+                }
+                $html_table .= '</td>';
+            }
+
+            $html_table .= '<td>'; //откроем ячейку
+            $html_table .= "<a href=" . $_SERVER['PHP_SELF'] . "?id=" . $id . "&mode=delete> Удалить </a>";
+            $html_table .= '</td>';
+            $html_table .= "</tr>\n"; //закрываем строку
+        }
+    }
+    $html_table .= '</table>';
+    return $html_table;
+}
+
+//инициализация
+$tableStyle = ' border="1px" cellpadding="2"';
+
+//инициализируем массив в любом случае
+if (!isset($_SESSION['ads'])) {
+    $_SESSION['ads'] = [];
+    //$_SESSION['max_id'] = 0; //счётчик всегда увеличивается, id всегда уникален
+    $_SESSION['action_mode'] = ""; //либо edit либо пусто
+    $_SESSION['edit_id'] = ""; //id редактируемого объявления
+}
+
+//значения по умолчанию
 $form_array = [];
 $form_array['seller_name'] = "";
 $form_array['phone'] = "";
@@ -26,109 +105,84 @@ $form_array['price'] = "0";
 $form_array['email'] = "";
 $form_array['private'] = 1;
 
-//каждый раз инициализируем массив текущих объявлений
-//если файл не существует - создадим его
-if (!file_exists('ads/')) {
-    mkdir('ads');
-}
-
-if (file_exists(PATH_TO_ADS)) {
-    $ads_array = file_get_contents(PATH_TO_ADS);
-    if ($ads_array === false) { //инициализируем массив
-        $ads_array = [];
-    } elseif (strlen($ads_array) == 0) {
-        $ads_array = [];
-    }
-    else {
-        $ads_array = unserialize($ads_array);
-    }
-
-} else {
-    $handle = fopen(PATH_TO_ADS, "w");
-    if ($handle) {
-        fclose($handle);
-    }
-    $ads_array = [];
-}
-
+//var_dump($_POST);
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-    $from_submit = isset($_POST['submit']);
-    $from_edit = isset($_POST['edit']);
 
-    if ($from_submit || $from_edit) {
+    if (isset($_POST['submit'])) {  //пришло от кнопки
 
-        $tmp_post = $_POST; //можно ли сразу перезаписывать в пост или лучше через буферную переменную?
+        if ($_SESSION['action_mode'] == "") { //заносим объявление
+            $cur_index = max(array_keys($_SESSION['ads']))+1; //$_SESSION['max_id'];  //увеличили id
+        } else {
+            $cur_index = $_SESSION['edit_id'];  //редактируемое объявление
+            //сбрасываем режим
+            $_SESSION['action_mode'] = "";
+            $_SESSION['edit_id'] = "";
+        }
+        //либо добавляется по ключу, либо редактируется текущее
+        $_SESSION['ads'][$cur_index] = $_POST;
 
         //проверим чекбокс. Если нет галки - в ПОСТ не приходит
-        if (!isset($tmp_post['allow_mails'])) {
-            $tmp_post['allow_mails'] = "";
+        if (!isset($_SESSION['ads'][$cur_index]['allow_mails'])) {
+            $_SESSION['ads'][$cur_index]['allow_mails'] = "";
         }
 
-        //обработка значений ПОСТ; может быть значительно сложнее
-        foreach ($tmp_post as $key => $value) {
-           $tmp_post[$key] = strip_tags($value);
+        //обработка значений ПОСТ, может быть значительно сложнее
+        foreach ($_SESSION['ads'][$cur_index] as $key => $value) {
+            $_SESSION['ads'][$cur_index][$key] = strip_tags($value);
         }
 
-        if ($from_submit) {
-            //добавляем новое объявление, если не было
-            $ads_array[] = $tmp_post;
-        } elseif ($from_edit) {
-
-            $id = (int)$_POST['edit_id'];
-            $ads_array[$id] = $tmp_post;
-        }
-
-        if (file_exists(PATH_TO_ADS)) {
-            file_put_contents(PATH_TO_ADS, serialize($ads_array));
-        }
         //перезапрос GET
         header("Location: " . $_SERVER["PHP_SELF"]);
         exit;
-
     }
-
 } elseif ($_SERVER["REQUEST_METHOD"] == "GET") { //пришло из ссылок
 
-    if (isset($_GET['id']) && isset($_GET['mode'])) {
+    switch ($_SESSION['action_mode']) {
+        case "edit":
 
-        //проверяем параметры
-        $id = (int) $_GET['id'];
-        $mode = strip_tags($_GET['mode']);
+            echo "Сначала сохраните изменения в объявлении!";
 
-        if ($mode == "show") { //проставить
-
-            //заполним массив для вывода html
-            foreach ($ads_array[$id] as $key => $value) {
+            foreach ($_SESSION['ads'][$_SESSION['edit_id']] as $key => $value) {
                 $form_array[$key] = $value;
             }
+            break;
 
-            $default_button_text = 'Записать изменения';
-            $default_button_name = 'edit';
-            $default_edit_id = (int)$_GET['id']; //для прописи в хидден
+        default :
 
-        } elseif ($mode == "delete") { //удалить
+            if (isset($_GET['id']) && isset($_GET['mode'])) {
 
-            //проверим, существует ли ключ в соответствии
-            if (array_key_exists($id,  $ads_array)) {
+                //проверяем параметры
+                $id = (int) $_GET['id'];
+                $mode = strip_tags($_GET['mode']);
 
-                unset($ads_array[$id]); //обнуляем объявление, в случае единств. объявления -в файле сериал. пустой массив
+                if ($mode == "show") { //проставить
+                    foreach ($_SESSION['ads'][$id] as $key => $value) {
+                        $form_array[$key] = $value;
+                    }
 
-                //поместим в файл
-                if (file_exists(PATH_TO_ADS)) {
-                    file_put_contents(PATH_TO_ADS, serialize($ads_array));
+                    //выставляем режим редактирования
+                    $_SESSION['action_mode'] = "edit";
+                    $_SESSION['edit_id'] = $id;
+
+                } elseif ($mode == "delete") { //удалить
+                    //проверим, существует ли ключ в соответствии
+                    if (array_key_exists($id, $_SESSION['ads'])) {
+
+                        // echo "Хотим удалить объявление: " . $id . "<br />";
+                        unset($_SESSION['ads'][$id]);
+                    } else {
+
+                        echo "Передан неверный ID объявления";
+                    }
                 }
-             } else {
-
-                echo "Передан неверный ID объявления";
             }
-        }
     }
 }
 ?>
 
-<h1>Урок 7. Сохранение через куки</h1>
+<h1>Урок 6. Задание № 1</h1>
 
 <!DOCTYPE HTML>
 <html>
@@ -163,37 +217,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div> <label>Цена</label> <input type="text" maxlength="9" value="<?php echo $form_array['price']?>" name="price">&nbsp;<span>руб.</span> </div>
 
     <div>
-        <div> <span class="vas-submit-border"></span> <span></span> <input type="submit" value="<?php echo $default_button_text;  ?>" id="form_submit" name="<?php echo $default_button_name?>"> </div>
-        <input type="hidden" name="edit_id" id="hiddenField" value="<?php echo $default_edit_id ?>" />
+        <div> <span class="vas-submit-border"></span> <span></span> <input type="submit" value="<?php echo button_name();  ?>" id="form_submit" name="submit"> </div>
     </div>
 </form>
 
 <?php
-
+    //exit;
     //Название объявления | Цена | Имя | Удалить
-
-echo '<table border="1px" cellpadding="1">';
-foreach ($ads_array as $ad_key => $ad) {
-
-    $html_str = "";
-    echo '<tr>';
-    foreach ($ad as $key => $value) {
-        switch ($key) {
-            case 'title':
-                $html_str .= '<td><a href="?id=' . $ad_key . '&mode=show">' . $value . '</a></td>';
-             //   $html_str .= str_repeat('&nbsp', 30 - strlen($value)) . '|';
-                break;
-            case 'price':
-            case 'seller_name':
-                $html_str .= '<td>'.$value.'</td>';
-                break;
-        }
-    }
-    $html_str .= '<td><a href="?id='.$ad_key. '&mode=delete">Удалить</a></td>';
-
-    echo $html_str;
-
-    echo '</tr>';
-}
-  echo '</table>';
+    $columns_array = ['title' => 'Название объявления'
+        ,'price' => 'Цена'
+        ,'seller_name' => 'Имя'
+        ];
+   $table = array2table($columns_array);
+   echo $table;
 ?>
