@@ -7,6 +7,12 @@ define('PATH_TO_ADS', 'ads/ads.txt');
 
 header("Content-Type: text/html; charset=utf-8");
 
+function write_to_file($array) {
+    if (file_exists(PATH_TO_ADS)) {
+        file_put_contents(PATH_TO_ADS, serialize($array));
+    }
+}
+
 //имя кнопки по умолчанию
 $default_button_text = 'Отправить';
 $default_button_name = 'submit';
@@ -80,9 +86,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $ads_array[$id] = $tmp_post;
         }
 
-        if (file_exists(PATH_TO_ADS)) {
-            file_put_contents(PATH_TO_ADS, serialize($ads_array));
-        }
+        write_to_file($ads_array);
         //перезапрос GET
         header("Location: " . $_SERVER["PHP_SELF"]);
         exit;
@@ -116,9 +120,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 unset($ads_array[$id]); //обнуляем объявление, в случае единств. объявления -в файле сериал. пустой массив
 
                 //поместим в файл
-                if (file_exists(PATH_TO_ADS)) {
-                    file_put_contents(PATH_TO_ADS, serialize($ads_array));
-                }
+                write_to_file($ads_array);
+
              } else {
 
                 echo "Передан неверный ID объявления";
