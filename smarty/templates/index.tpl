@@ -35,10 +35,29 @@
         </div>
     </form>
 
-{if $qty_of_ads != 0}
+{*{if $qty_of_ads != 0}
     {html_table loop=$arr_ads cols="Название объявления, Имя,Цена, Действие" rows=$qty_of_ads table_attr='border="1" cellpadding="1"'}
-{/if}
+{/if}*}
+ 
 
+<table border="1">
+<tr>
+    <td>Название</td>
+    <td>Имя</td>
+    <td>Цена</td>
+    <td>Действие</td>
+</tr>
+{if $qty_ads == 0}
+
+{foreach name=outer item=ads from=$arr_ads}
+  <tr>
+  {foreach key=key item=ad from=$ads}
+    <td>{$ad}</td>
+  {/foreach}
+  </tr>
+{/foreach}
+{/if}
+</table>
 
 
 

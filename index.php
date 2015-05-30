@@ -196,24 +196,24 @@ $arr_all_ads = [];
 
 foreach ($ads_array as $ad_key => $ad) {
 
-
+    $arr_one_ad = [];
     foreach ($ad as $key => $value) {
         switch ($key) {
             case 'title':
-                $arr_all_ads[] = '<a href="?id=' . $ad_key . '&mode=show">' . $value . '</a>';
+                $arr_one_ad[$key] = '<a href="?id=' . $ad_key . '&mode=show">' . $value . '</a>';
                 break;
             case 'price':
             case 'seller_name':
-                $arr_all_ads[] = $value;
+                $arr_one_ad[$key] = $value;
                 break;
         }
     }
-    $arr_all_ads[]='<a href="?id='.$ad_key. '&mode=delete">Удалить</a>';
-
+    $arr_one_ad['action']='<a href="?id='.$ad_key. '&mode=delete">Удалить</a>';
+    $arr_all_ads[] = $arr_one_ad;
 }
 
 $smarty->assign('arr_ads', $arr_all_ads);
-$smarty->assign('qty_of_ads', count($arr_all_ads)/4);
+$smarty->assign('qty_of_ads', count($arr_all_ads));
 
 $smarty->display('index.tpl');
 ?>
