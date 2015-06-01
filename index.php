@@ -213,7 +213,7 @@ foreach ($ads_array as $ad_key => $ad) {
 }*/
 
 $smarty->assign('arr_ads', $ads_array);
-$smarty->assign('qty_of_ads', count($arr_all_ads));
+// $smarty->assign('qty_of_ads', count($arr_all_ads));
 
 $smarty->display('index.tpl');
 ?>

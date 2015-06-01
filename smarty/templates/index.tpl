@@ -47,7 +47,7 @@
     <td>Цена</td>
     <td>Действие</td>
 </tr>
-{if $qty_ads == 0}
+
 
 {foreach name=outer item=ads from=$arr_ads}
   <tr>
@@ -63,7 +63,7 @@
   </tr>
 {/foreach}
 
-{/if}
+
 </table>
 
 
