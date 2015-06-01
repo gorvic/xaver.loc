@@ -52,10 +52,17 @@
 {foreach name=outer item=ads from=$arr_ads}
   <tr>
   {foreach key=key item=ad from=$ads}
-    <td>{$ad}</td>
+    
+    {if $key == 'title'}
+        <td><a href="?id={$key}&mode=show">{$ad}</a></td>
+    {elseif $key eq 'price' or $key eq 'seller_name'}
+        <td>{$ad}</td>
+    {/if}    
   {/foreach}
+  <td><a href="?id={$key}&mode=delete">Удалить</a></td>
   </tr>
 {/foreach}
+
 {/if}
 </table>
 

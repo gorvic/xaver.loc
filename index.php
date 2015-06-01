@@ -187,7 +187,7 @@ $smarty->assign('button_name', $default_button_name);
 $smarty->assign('button_value', $default_button_value);
 $smarty->assign('default_edit_id',$default_edit_id);
 
-
+/*
 //создадим массив для вывода
 $arr_all_ads = [];
 
@@ -210,9 +210,9 @@ foreach ($ads_array as $ad_key => $ad) {
     }
     $arr_one_ad['action']='<a href="?id='.$ad_key. '&mode=delete">Удалить</a>';
     $arr_all_ads[] = $arr_one_ad;
-}
+}*/
 
-$smarty->assign('arr_ads', $arr_all_ads);
+$smarty->assign('arr_ads', $ads_array);
 $smarty->assign('qty_of_ads', count($arr_all_ads));
 
 $smarty->display('index.tpl');
