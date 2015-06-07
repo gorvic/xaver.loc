@@ -5,7 +5,7 @@
     <form action="" method="post">
           
         <div>
-            {html_radios name="private" options=$organization_form selected=$form_array.private}
+            {html_radios name="organization_form_id" options=$organization_form selected=$form_array.organization_form_id}
         </div>
           
         <div> <label><b id="your-name">Ваше имя</b></label>
@@ -23,7 +23,9 @@
             Выберите параметры
         </label> <div id="filters">
         </div> </div>
-        <div> <label for="region">Город</label> {html_options name=location_id options=$cities selected=$city_id}
+        <div> <label for="region">Город</label> {html_options name=location_id options=$cities selected=$city_selected_id}
+        <div> <label for="region">Категория</label> {html_options name=category_id options=$categories selected=$category_selected_id}
+            
         <div id="f_title"> <label for="fld_title" >Название объявления</label> <input type="text" maxlength="50"  value="{$form_array.title}" name="title" id="fld_title"> </div>
     
         <div> <label for="fld_description" id="js-description-label">Описание объявления</label> <textarea maxlength="3000" name="description" id="fld_description">{$form_array.description}</textarea> </div>
@@ -49,17 +51,17 @@
 </tr>
 
 
-{foreach name=outer item=ads from=$arr_ads}
+{foreach name=outer key=id item=ads from=$arr_ads}
   <tr>
   {foreach key=key item=ad from=$ads}
     
     {if $key == 'title'}
-        <td><a href="?id={$key}&mode=show">{$ad}</a></td>
+        <td><a href="?id={$id}&mode=show">{$ad}</a></td>
     {elseif $key eq 'price' or $key eq 'seller_name'}
         <td>{$ad}</td>
     {/if}    
   {/foreach}
-  <td><a href="?id={$key}&mode=delete">Удалить</a></td>
+  <td><a href="?id={$id}&mode=delete">Удалить</a></td>
   </tr>
 {/foreach}
 

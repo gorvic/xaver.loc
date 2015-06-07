@@ -1,14 +1,17 @@
 <?php
-
 header("Content-Type: text/html; charset=utf-8");
 
-$project_root = $_SERVER['DOCUMENT_ROOT'];
-$smarty_dir = $project_root.'/smarty/';
-//var_dump($smarty_dir.'libs/Smarty.class.php');
-//var_dump (file_exists($smarty_dir.'libs/Smarty.class.php'));
-require($smarty_dir.'libs/Smarty.class.php');
+//require_once("./includes/first_fill_of_tables.php");
+require_once("./includes/db_connection.php");
+require_once("./includes/session.php");
+require_once("./includes/functions.php");
 
-define('PATH_TO_ADS', 'ads/ads.txt');
+
+
+
+$project_root = $_SERVER['DOCUMENT_ROOT'];
+$smarty_dir = $project_root.'/includes/smarty/';
+require_once($smarty_dir.'libs/Smarty.class.php');
 
 //Smarty initialization
 $smarty = new Smarty();
@@ -22,88 +25,70 @@ $smarty->cache_dir = $smarty_dir.'cache';
 $smarty->config_dir = $smarty_dir.'configs';
 
 //header
-$smarty->assign('lesson_number', 8);
+$smarty->assign('lesson_number', 9);
+
 
 //cities
-$arr_cities =['-- Выберите город --',
-                '641780' => 'Новосибирск',
-                '641490' => 'Барабинск',
-                '641510' => 'Бердск',
-                '641600' => 'Искитим',
-                '641630' => 'Колывань',
-                '641680' => 'Краснообск',
-                '641710' => 'Куйбышев',
-                '641760' => 'Мошково',
-                '641790' => 'Обь',
-                '641800' => 'Ордынское',
-                '641970' => 'Черепаново'
-            ];
+$city_set = find_all_items('cities','name');
+$arr_cities = [];
+while($city = mysqli_fetch_assoc($city_set)) {
+	$arr_cities[$city['id']] = $city['name'];
+}
+mysqli_free_result($city_set);
 $smarty->assign('cities', $arr_cities);
+
+//categories
+$category_set = find_all_items('categories','name');
+$arr_categories = [];
+while($category = mysqli_fetch_assoc($category_set)) {
+	$arr_categories[$category['id']] = $category['name'];
+}
+mysqli_free_result($category_set);
+$smarty->assign('categories', $arr_categories);
 
 //organization form
 $arr_organization_form = ['0'=>'Частное лицо','1'=>'Организация'];
 $smarty->assign('organization_form', $arr_organization_form);
 
 
-
-function write_to_file($array) {
-    if (file_exists(PATH_TO_ADS)) {
-        file_put_contents(PATH_TO_ADS, serialize($array));
-    }
-}
-
 //имя кнопки по умолчанию
 $default_button_value = 'Отправить';
 $default_button_name = 'submit';
 $default_edit_id = '';
 
-
-//для заполнения пустого значения в тэгах хтмл
-//иначе конструкция value= , а нужно value = ""
-
-//$emtpy_value_option = "\"\"";
-
 $form_array = [];
 $form_array['seller_name'] = "";
 $form_array['phone'] = "";
 $form_array['allow_mails'] = "";
+$form_array['category_id'] = "";
 $form_array['location_id'] = "";
 $form_array['title'] = "";
 $form_array['description'] = "";
 $form_array['price'] = "0";
 $form_array['email'] = "";
-$form_array['private'] = 1;
+$form_array['organization_form_id'] = 1;
 
-//каждый раз инициализируем массив текущих объявлений
-//если файл не существует - создадим его
-if (!file_exists('ads/')) {
-    mkdir('ads');
+
+//get advertises
+$ads_array = [];
+$ads_set = find_all_items('ads','id');
+
+
+while($ad = mysqli_fetch_assoc($ads_set)) {
+	
+	foreach ($ad as $key => $value) {
+		$ads_array[$ad['id']][$key] = $value; 
+	}
 }
-
-if (file_exists(PATH_TO_ADS)) {
-    $ads_array = file_get_contents(PATH_TO_ADS);
-    if ($ads_array === false) { //инициализируем массив
-        $ads_array = [];
-    } elseif (strlen($ads_array) == 0) {
-        $ads_array = [];
-    }
-    else {
-        $ads_array = unserialize($ads_array);
-    }
-
-} else {
-    $handle = fopen(PATH_TO_ADS, "w");
-    if ($handle) {
-        fclose($handle);
-    }
-    $ads_array = [];
-}
+//var_dump($ads_array);
 
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $from_submit = isset($_POST['submit']);
     $from_edit = isset($_POST['edit']);
+    
+    
 
     if ($from_submit || $from_edit) {
 
@@ -111,27 +96,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         //проверим чекбокс. Если нет галки - в ПОСТ не приходит
         if (!isset($tmp_post['allow_mails'])) {
-            $tmp_post['allow_mails'] = "";
+			$tmp_post['allow_mails'] = "";
         }
 
         //обработка значений ПОСТ; может быть значительно сложнее
         foreach ($tmp_post as $key => $value) {
-           $tmp_post[$key] = strip_tags($value);
+			$tmp_post[$key] = strip_tags($value);
         }
 
         if ($from_submit) {
-            //добавляем новое объявление, если не было
-            $ads_array[] = $tmp_post;
-        } elseif ($from_edit) {
-
-            $id = (int)$_POST['edit_id'];
-            $ads_array[$id] = $tmp_post;
+			//убираем ключи, для согласования колонок в таблице sql
+			unset($tmp_post['submit']); //убираем, для согласования колонок в таблице sql
+			unset($tmp_post['edit_id']); //убираем, для согласования колонок в таблице sql
+			create_new_ad($tmp_post);
+	    
+		} elseif ($from_edit) {
+			$id = (int)$_POST['edit_id'];
+			//убираем ключи, для согласования колонок в таблице sql
+			unset($tmp_post['edit_id']);
+			unset($tmp_post['edit']);
+			unset($tmp_post['submit']); //убираем, для согласования колонок в таблице sql
+			update_ad($id, $tmp_post);
         }
-
-        write_to_file($ads_array);
-        //перезапрос GET
-        header("Location: " . $_SERVER["PHP_SELF"]);
-        exit;
+	
+		//перезапрос GET
+		redirect_to($_SERVER["PHP_SELF"]);
 
     }
 
@@ -146,7 +135,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         if ($mode == "show") { //проставить
 
             //заполним массив для вывода html
-            foreach ($ads_array[$id] as $key => $value) {
+			$ad = find_item_by_id('ads', $id);
+            foreach ($ad as $key => $value) {
                 $form_array[$key] = $value;
             }
 
@@ -158,14 +148,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
             //проверим, существует ли ключ в соответствии
             if (array_key_exists($id,  $ads_array)) {
-
-                unset($ads_array[$id]); //обнуляем объявление, в случае единств. объявления -в файле сериал. пустой массив
-
-                //поместим в файл
-                write_to_file($ads_array);
-
-             } else {
-
+				delete_ad($id);
+				redirect_to($_SERVER["PHP_SELF"]);
+			} else {
                 echo "Передан неверный ID объявления";
             }
         }
@@ -178,8 +163,10 @@ $smarty->assign('form_array', $form_array);
 $smarty->assign('is_allow_mail', $form_array['allow_mails'] == 1 ? 'checked' :'');
 
 //город, значение для selected
-$smarty->assign('city_id', $form_array['location_id']);
+$smarty->assign('city_selected_id', $form_array['location_id']);
 
+//category, if exists selected value
+$smarty->assign('category_selected_id', $form_array['category_id']);
 
 
 //button
@@ -187,33 +174,14 @@ $smarty->assign('button_name', $default_button_name);
 $smarty->assign('button_value', $default_button_value);
 $smarty->assign('default_edit_id',$default_edit_id);
 
-/*
-//создадим массив для вывода
-$arr_all_ads = [];
-
-//можно добавлять таблицу {foreach}
-//можно сделать сквозной массив  и его поместить в {html_table}
-
-foreach ($ads_array as $ad_key => $ad) {
-
-    $arr_one_ad = [];
-    foreach ($ad as $key => $value) {
-        switch ($key) {
-            case 'title':
-                $arr_one_ad[$key] = '<a href="?id=' . $ad_key . '&mode=show">' . $value . '</a>';
-                break;
-            case 'price':
-            case 'seller_name':
-                $arr_one_ad[$key] = $value;
-                break;
-        }
-    }
-    $arr_one_ad['action']='<a href="?id='.$ad_key. '&mode=delete">Удалить</a>';
-    $arr_all_ads[] = $arr_one_ad;
-}*/
 
 $smarty->assign('arr_ads', $ads_array);
-// $smarty->assign('qty_of_ads', count($arr_all_ads));
 
 $smarty->display('index.tpl');
+	
+	
+if (isset($connection)) {
+	  mysqli_close($connection);
+	  
+}
 ?>
