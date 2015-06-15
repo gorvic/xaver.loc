@@ -1,9 +1,18 @@
 <?php
-	define("DB_SERVER", "localhost"); //0.0.0.0
-	define("DB_USER", "root"); //gorvic
-	define("DB_PASS", "123"); // ""
-	define("DB_NAME", "advertises");
+	require_once ('constants.php');
+	
+	//DBSimple
+	require_once(LIBPATH.'/dbsimple/config.php');
+	require_once(LIBPATH.'/dbsimple/DBSimple/Generic.php');
 
+	
+// Устанавливаем соединение.
+	$connection = DbSimple_Generic::connect('mysqli://'. DB_USER. ':' . DB_PASS.'@'.DB_SERVER .'/'.DB_NAME);
+	$connection->setErrorHandler('dbErrorHandler');
+	$connection->setLogger('dbLogger');
+		
+	
+	/*
   // 1. Create a database connection
   $connection = mysqli_connect(DB_SERVER, DB_USER, DB_PASS, DB_NAME);
   // Test if connection succeeded
@@ -15,5 +24,7 @@
   }
   if (!mysqli_set_charset($connection, "utf8")) {
     die('Ошибка при загрузке набора символов utf8:'.mysqli_error($connection));
-  } 
-?>
+  } */
+	
+	
+

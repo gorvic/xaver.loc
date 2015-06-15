@@ -1,36 +1,49 @@
 <?php
-
 header("Content-Type: text/html; charset=utf-8");
-require_once ('./includes/initialize.php');
+
+//require_once("./includes/first_fill_of_tables.php");
+require_once("./includes/db_connection.php");
+require_once("./includes/session.php");
+require_once("./includes/functions.php");
 
 
-$firePHP = FirePHP::getInstance(true);
-$firePHP->setEnabled(true);
 
+
+$project_root = $_SERVER['DOCUMENT_ROOT'];
+$smarty_dir = $project_root.'/includes/smarty/';
+require_once($smarty_dir.'libs/Smarty.class.php');
 
 //Smarty initialization
 $smarty = new Smarty();
+
 $smarty->compile_check = true;
 $smarty->debugging = false;
 
-$smarty->template_dir = SMARTY_PATH.'/templates';
-$smarty->compile_dir = SMARTY_PATH.'/templates_c';
-$smarty->cache_dir = SMARTY_PATH.'/cache';
-$smarty->config_dir = SMARTY_PATH.'/configs';
-
-
-
+$smarty->template_dir = $smarty_dir.'templates';
+$smarty->compile_dir = $smarty_dir.'templates_c';
+$smarty->cache_dir = $smarty_dir.'cache';
+$smarty->config_dir = $smarty_dir.'configs';
 
 //header
-$smarty->assign('lesson_number', 10);
+$smarty->assign('lesson_number', 9);
 
 
 //cities
-$arr_cities = dbs_find_all_items('cities','id', 'name');
+$city_set = find_all_items('cities','name');
+$arr_cities = [];
+while($city = mysqli_fetch_assoc($city_set)) {
+	$arr_cities[$city['id']] = $city['name'];
+}
+mysqli_free_result($city_set);
 $smarty->assign('cities', $arr_cities);
 
 //categories
-$arr_categories  = dbs_find_all_items('categories','id','name');
+$category_set = find_all_items('categories','name');
+$arr_categories = [];
+while($category = mysqli_fetch_assoc($category_set)) {
+	$arr_categories[$category['id']] = $category['name'];
+}
+mysqli_free_result($category_set);
 $smarty->assign('categories', $arr_categories);
 
 //organization form
@@ -57,10 +70,20 @@ $form_array['organization_form_id'] = 1;
 
 
 //get advertises
-$ads_array = dbs_find_all_items('ads','id', implode(', ',array_keys($form_array)));
+$ads_array = [];
+$ads_set = find_all_items('ads','id');
 
 
-if (request_is_post()) {
+while($ad = mysqli_fetch_assoc($ads_set)) {
+	
+	foreach ($ad as $key => $value) {
+		$ads_array[$ad['id']][$key] = $value; 
+	}
+}
+//var_dump($ads_array);
+
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $from_submit = isset($_POST['submit']);
     $from_edit = isset($_POST['edit']);
@@ -77,15 +100,15 @@ if (request_is_post()) {
         }
 
         //обработка значений ПОСТ; может быть значительно сложнее
-        /*foreach ($tmp_post as $key => $value) {
+        foreach ($tmp_post as $key => $value) {
 			$tmp_post[$key] = strip_tags($value);
-        }*/
+        }
 
         if ($from_submit) {
 			//убираем ключи, для согласования колонок в таблице sql
 			unset($tmp_post['submit']); //убираем, для согласования колонок в таблице sql
 			unset($tmp_post['edit_id']); //убираем, для согласования колонок в таблице sql
-			dbs_create_new_ad($tmp_post);
+			create_new_ad($tmp_post);
 	    
 		} elseif ($from_edit) {
 			$id = (int)$_POST['edit_id'];
@@ -93,7 +116,7 @@ if (request_is_post()) {
 			unset($tmp_post['edit_id']);
 			unset($tmp_post['edit']);
 			unset($tmp_post['submit']); //убираем, для согласования колонок в таблице sql
-			dbs_update_ad($id, $tmp_post);
+			update_ad($id, $tmp_post);
         }
 	
 		//перезапрос GET
@@ -101,7 +124,7 @@ if (request_is_post()) {
 
     }
 
-} elseif (request_is_get()) { //пришло из ссылок
+} elseif ($_SERVER["REQUEST_METHOD"] == "GET") { //пришло из ссылок
 
     if (isset($_GET['id']) && isset($_GET['mode'])) {
 
@@ -112,7 +135,7 @@ if (request_is_post()) {
         if ($mode == "show") { //проставить
 
             //заполним массив для вывода html
-			$ad = dbs_find_item_by_id('ads', $id);
+			$ad = find_item_by_id('ads', $id);
             foreach ($ad as $key => $value) {
                 $form_array[$key] = $value;
             }
@@ -125,7 +148,7 @@ if (request_is_post()) {
 
             //проверим, существует ли ключ в соответствии
             if (array_key_exists($id,  $ads_array)) {
-				dbs_delete_ad($id);
+				delete_ad($id);
 				redirect_to($_SERVER["PHP_SELF"]);
 			} else {
                 echo "Передан неверный ID объявления";
@@ -156,4 +179,9 @@ $smarty->assign('arr_ads', $ads_array);
 
 $smarty->display('index.tpl');
 	
+	
+if (isset($connection)) {
+	  mysqli_close($connection);
+	  
+}
 ?>

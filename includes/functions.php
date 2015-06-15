@@ -5,7 +5,32 @@
 	  exit;
 	}
 	
-	/*
+	function request_is_get() {
+		return $_SERVER['REQUEST_METHOD'] === 'GET';
+	}
+
+	function request_is_post() {
+		return $_SERVER['REQUEST_METHOD'] === 'POST';
+	}
+
+/*encode-escape functions
+	 * 
+	 */
+	function h($string) {
+		return htmlspecialchars($string);
+	}
+
+	// Sanitize for JavaScript output
+	function j($string) {
+		return json_encode($string);
+	}
+
+	// Sanitize for use in a URL
+	function u($string) {
+		return urlencode($string);
+	}
+
+/*
 	MySQL functions
 	 * 
 	 */
