@@ -2,7 +2,7 @@
 
 require_once ('constants.php');
 //DBSimple
-require_once(LIBPATH.'/dbsimple/DBSimple/Generic.php');
+require_once(LIBPATH.'/dbsimple/DbSimple/Generic.php');
 require_once(LIBPATH.'/dbsimple/config.php');
 
 //Smarty
